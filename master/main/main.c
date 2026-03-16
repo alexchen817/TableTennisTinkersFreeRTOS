@@ -37,33 +37,21 @@ void initializeWifi()
     wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&config));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_start();
-    esp_wifi_set_channel(CONFIG_ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 }
 
 esp_err_t initializeESPNOW()
 {
-    esp_now_init();
-    esp_now_set_pmk((uint8_t*)CONFIG_ESPNOW_PMK);
-
-    // add peer information
-    esp_now_peer_info_t *peer = malloc(sizeof(esp_now_peer_info_t));
-    if (peer == NULL) {
-        ESP_LOGE("master", "MALLOC PEER INFO FAILURE");
-        return ESP_FAIL;
-    }
-
-    // add slave
-    memset(peer, 0, sizeof(esp_now_peer_info_t));
-    peer->channel = CONFIG_ESPNOW_CHANNEL;
-    peer->ifidx = ESP_IF_WIFI_STA;
-    peer->encrypt = false;
-    memcpy(peer->peer_addr, slave_mac_addr, ESP_NOW_ETH_ALEN);
-    ESP_ERROR_CHECK(esp_now_add_peer(peer));
-    free(peer);
-
-
+    ESP_ERROR_CHECK(esp_now_init());
+    // add peer
+    memset(&peer, 0, sizeof(esp_now_peer_info_t));
+    peer.channel = CONFIG_ESPNOW_CHANNEL;
+    peer.ifidx = ESP_IF_WIFI_STA;
+    peer.encrypt = false;
+    memcpy(peer.peer_addr, slave_mac_addr, ESP_NOW_ETH_ALEN);
+    ESP_ERROR_CHECK(esp_now_add_peer(&peer));
     return ESP_OK;
 }
 
