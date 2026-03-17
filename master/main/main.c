@@ -8,8 +8,11 @@
 #include "esp_now.h"
 #include "esp_wifi_types_generic.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
+#include "freertos/projdefs.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include "hal/gpio_types.h"
 #include "nvs_flash.h"
 #include "esp_random.h"
 #include "esp_event.h"
@@ -20,6 +23,16 @@
 #include "esp_crc.h"
 #include "sdkconfig.h"
 #include "main.h"
+#include "driver/gpio.h"
+
+static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x5D, 0x9C};
+static esp_now_peer_info_t peer;
+
+static const int UP_BUTTON_PIN = 13;
+static const int DOWN_BUTTON_PIN = 12;
+static const int RIGHT_BUTTON_PIN = 14;
+static const int LEFT_BUTTON_PIN = 27;
+static const int INDEXER_BUTTON_PIN = 26;
 
 void initializeNVS() 
 {
@@ -42,22 +55,91 @@ void initializeWifi()
     ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 }
 
+void esp_now_task(void* params) 
+{
+    // this task must never return or end!
+    while (true) {
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
 esp_err_t initializeESPNOW()
 {
     ESP_ERROR_CHECK(esp_now_init());
-    // add peer
+
     memset(&peer, 0, sizeof(esp_now_peer_info_t));
     peer.channel = CONFIG_ESPNOW_CHANNEL;
     peer.ifidx = ESP_IF_WIFI_STA;
     peer.encrypt = false;
     memcpy(peer.peer_addr, slave_mac_addr, ESP_NOW_ETH_ALEN);
     ESP_ERROR_CHECK(esp_now_add_peer(&peer));
+
+    xTaskCreatePinnedToCore(
+    esp_now_task,
+    "ESP_NOW_Task",    
+    2048,        
+    NULL,             
+    5,              
+    NULL,   
+    1
+    );
+
     return ESP_OK;
 }
 
+void button_state_task() 
+{
+    // this task must never return or end!
+    while (true) {
+        if ((!gpio_get_level(UP_BUTTON_PIN) &&
+            !gpio_get_level(DOWN_BUTTON_PIN)) ) {
+            continue;
+        } else if (!gpio_get_level(RIGHT_BUTTON_PIN) &&
+                    !gpio_get_level(LEFT_BUTTON_PIN)) {
+            continue;
+        } else if (!gpio_get_level(UP_BUTTON_PIN)) {
+
+        } else if (!gpio_get_level(DOWN_BUTTON_PIN)) {
+
+        } else if (!gpio_get_level(RIGHT_BUTTON_PIN)) {
+
+        } else if (!gpio_get_level(LEFT_BUTTON_PIN)) {
+            
+        } else if (!gpio_get_level(INDEXER_BUTTON_PIN)) {
+
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
 void app_main(void)
 {
     initializeNVS();
     initializeWifi();
     initializeESPNOW();
+
+    gpio_config_t buttonConfigs = {
+        // activate all pins in one go
+        .pin_bit_mask = ((1ULL << UP_BUTTON_PIN)
+                        | (1ULL << DOWN_BUTTON_PIN)
+                        | (1ULL << LEFT_BUTTON_PIN)
+                        | (1ULL << RIGHT_BUTTON_PIN
+                        | (1ULL << INDEXER_BUTTON_PIN))),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,  
+        .pull_down_en = GPIO_PULLUP_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+
+    ESP_ERROR_CHECK(gpio_config(&buttonConfigs));
+    xTaskCreatePinnedToCore(
+        button_state_task,
+        "Button State Task",
+        2048, 
+        NULL, 
+        4, 
+        NULL,
+        1
+    );
 }
