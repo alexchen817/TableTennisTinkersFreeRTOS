@@ -36,12 +36,12 @@ static const int RIGHT_BUTTON_PIN = 14;
 static const int LEFT_BUTTON_PIN = 27;
 static const int INDEXER_BUTTON_PIN = 26;
 
+#define QUEUE_SIZE 10
+#define PAYLOAD_SIZE sizeof(Payload)
 static Payload payload;
 static StaticQueue_t static_queue;
 static QueueHandle_t queue_handler;
-static const int QUEUE_SIZE = 10;
 static uint8_t queue_buffer[QUEUE_SIZE * sizeof(Payload)];
-static const size_t PAYLOAD_SIZE = sizeof(Payload);
 
 void initializeNVS() 
 {
