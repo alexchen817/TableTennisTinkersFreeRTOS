@@ -12,6 +12,7 @@
 #include "freertos/projdefs.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include "freertos/queue.h"
 #include "hal/gpio_types.h"
 #include "nvs_flash.h"
 #include "esp_random.h"
@@ -21,6 +22,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_crc.h"
+#include "portmacro.h"
 #include "sdkconfig.h"
 #include "main.h"
 #include "driver/gpio.h"
@@ -33,6 +35,13 @@ static const int DOWN_BUTTON_PIN = 12;
 static const int RIGHT_BUTTON_PIN = 14;
 static const int LEFT_BUTTON_PIN = 27;
 static const int INDEXER_BUTTON_PIN = 26;
+
+static Payload payload;
+static StaticQueue_t static_queue;
+static QueueHandle_t queue_handler;
+static const int QUEUE_SIZE = 10;
+static uint8_t queue_buffer[QUEUE_SIZE * sizeof(Payload)];
+static const size_t PAYLOAD_SIZE = sizeof(Payload);
 
 void initializeNVS() 
 {
@@ -58,9 +67,12 @@ void initializeWifi()
 void esp_now_task(void* params) 
 {
     // this task must never return or end!
-    while (true) {
-
-        vTaskDelay(pdMS_TO_TICKS(50));
+    Payload recieved_payload;
+    while (true) { 
+        // block until a payload is pushed to queue
+        if (xQueueReceive(queue_handler,&recieved_payload, portMAX_DELAY) == pdPASS) {
+            esp_now_send(slave_mac_addr, (uint8_t *)&recieved_payload, sizeof(Payload));
+        }
     }
 }
 
@@ -88,31 +100,30 @@ esp_err_t initializeESPNOW()
     return ESP_OK;
 }
 
-void button_state_task() 
+void button_state_task(void* params) 
 {
     // this task must never return or end!
     while (true) {
-        if ((!gpio_get_level(UP_BUTTON_PIN) &&
-            !gpio_get_level(DOWN_BUTTON_PIN)) ) {
+        payload.upState = !gpio_get_level(UP_BUTTON_PIN);
+        payload.downState = !gpio_get_level(DOWN_BUTTON_PIN);
+        payload.leftState = !gpio_get_level(LEFT_BUTTON_PIN);
+        payload.rightState = !gpio_get_level(RIGHT_BUTTON_PIN);
+        payload.indexerState = !gpio_get_level(INDEXER_BUTTON_PIN);
+
+        if (payload.upState && payload.downState) {
+            vTaskDelay(pdMS_TO_TICKS(50));
             continue;
-        } else if (!gpio_get_level(RIGHT_BUTTON_PIN) &&
-                    !gpio_get_level(LEFT_BUTTON_PIN)) {
+        } else if (payload.rightState && payload.leftState) {
+            vTaskDelay(pdMS_TO_TICKS(50));
             continue;
-        } else if (!gpio_get_level(UP_BUTTON_PIN)) {
-
-        } else if (!gpio_get_level(DOWN_BUTTON_PIN)) {
-
-        } else if (!gpio_get_level(RIGHT_BUTTON_PIN)) {
-
-        } else if (!gpio_get_level(LEFT_BUTTON_PIN)) {
-            
-        } else if (!gpio_get_level(INDEXER_BUTTON_PIN)) {
-
         }
+
+        xQueueSend(queue_handler, &payload, 0);
         
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
+
 void app_main(void)
 {
     initializeNVS();
@@ -133,6 +144,14 @@ void app_main(void)
     };
 
     ESP_ERROR_CHECK(gpio_config(&buttonConfigs));
+
+    queue_handler = xQueueCreateStatic(
+                                       QUEUE_SIZE,
+                                       PAYLOAD_SIZE,
+                                       queue_buffer,
+                                       &static_queue
+                                    );
+
     xTaskCreatePinnedToCore(
         button_state_task,
         "Button State Task",
