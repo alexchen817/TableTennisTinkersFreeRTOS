@@ -8,7 +8,7 @@ typedef struct {
     uint8_t leftState;
     uint8_t rightState;
     uint8_t indexerState;
-} Payload;
+} __attribute__((packed)) Payload;
 
 void initializeNVS();
 void intializeWifi();
