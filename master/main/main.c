@@ -4,6 +4,7 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
+#include "esp_err.h"
 #include "esp_interface.h"
 #include "esp_now.h"
 #include "esp_wifi_types_generic.h"
@@ -27,7 +28,7 @@
 #include "main.h"
 #include "driver/gpio.h"
 
-static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x5D, 0x9C};
+static uint8_t slave_slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x5D, 0x9C};
 static esp_now_peer_info_t peer;
 
 static const int UP_BUTTON_PIN = 13;
@@ -64,6 +65,8 @@ void initializeWifi()
     ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 }
 
+
+
 void esp_now_task(void* params) 
 {
     // this task must never return or end!
@@ -71,7 +74,7 @@ void esp_now_task(void* params)
     while (true) { 
         // block until a payload is pushed to queue
         if (xQueueReceive(queue_handler,&recieved_payload, portMAX_DELAY) == pdPASS) {
-            esp_now_send(slave_mac_addr, (uint8_t *)&recieved_payload, sizeof(Payload));
+            esp_now_send(slave_slave_mac_addr, (uint8_t *)&recieved_payload, sizeof(Payload));
         }
     }
 }
@@ -84,7 +87,7 @@ esp_err_t initializeESPNOW()
     peer.channel = CONFIG_ESPNOW_CHANNEL;
     peer.ifidx = ESP_IF_WIFI_STA;
     peer.encrypt = false;
-    memcpy(peer.peer_addr, slave_mac_addr, ESP_NOW_ETH_ALEN);
+    memcpy(peer.peer_addr, slave_slave_mac_addr, ESP_NOW_ETH_ALEN);
     ESP_ERROR_CHECK(esp_now_add_peer(&peer));
 
     xTaskCreatePinnedToCore(
@@ -124,11 +127,25 @@ void button_state_task(void* params)
     }
 }
 
+void on_data_sent(const esp_now_send_info_t* slave_mac_addr, esp_now_send_status_t status) 
+{
+    if (status == ESP_NOW_SEND_SUCCESS) {
+        ESP_LOGI("ESPNOW", "SUCCESSFULLY SENT TO %02X:%02X:%02X:%02X:%02X:%02X ",
+                    slave_mac_addr[0], slave_mac_addr[1], slave_mac_addr[2], 
+                    slave_mac_addr[3], slave_mac_addr[4], slave_mac_addr[5] );
+    } else {
+        ESP_LOGI("ESPNOW", "FAILED TO SEND TO %02X:%02X:%02X:%02X:%02X:%02X ",
+                            slave_mac_addr[0], slave_mac_addr[1], slave_mac_addr[2], 
+                            slave_mac_addr[3], slave_mac_addr[4], slave_mac_addr[5] );
+    }
+}
+
 void app_main(void)
 {
     initializeNVS();
     initializeWifi();
     initializeESPNOW();
+    ESP_ERROR_CHECK(esp_now_register_send_cb(on_data_sent));
 
     gpio_config_t buttonConfigs = {
         // activate all pins in one go
