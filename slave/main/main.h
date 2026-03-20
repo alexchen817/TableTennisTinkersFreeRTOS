@@ -12,4 +12,3 @@ typedef struct {
 
 void initializeNVS();
 void intializeWifi();
-esp_err_t intializeESPNOW();
