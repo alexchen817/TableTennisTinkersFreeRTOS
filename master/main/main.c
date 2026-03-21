@@ -31,18 +31,18 @@
 static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x5D, 0x9C};
 static esp_now_peer_info_t peer;
 
-static const int UP_BUTTON_PIN = 13;
-static const int DOWN_BUTTON_PIN = 12;
-static const int RIGHT_BUTTON_PIN = 14;
-static const int LEFT_BUTTON_PIN = 27;
-static const int INDEXER_BUTTON_PIN = 26;
+static const int UP_BUTTON_PIN = 18;
+static const int DOWN_BUTTON_PIN = 19;
+static const int RIGHT_BUTTON_PIN = 21;
+static const int LEFT_BUTTON_PIN = 22;
+static const int INDEXER_BUTTON_PIN = 23;
 
 #define QUEUE_SIZE 10
 #define PAYLOAD_SIZE sizeof(Payload)
 static Payload payload;
 static StaticQueue_t static_queue;
-static QueueHandle_t queue_handler;
-static uint8_t queue_buffer[QUEUE_SIZE * sizeof(Payload)];
+static QueueHandle_t queue_handler = NULL;
+static uint8_t queue_buffer[QUEUE_SIZE * sizeof(Payload)] __attribute__((aligned(4)));
 
 void initializeNVS() 
 {
@@ -57,6 +57,7 @@ void initializeNVS()
 void initializeWifi()
 {
     ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
     wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&config));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
@@ -72,7 +73,7 @@ void esp_now_task(void* params)
     while (true) { 
         // block until a payload is pushed to queue
         if (xQueueReceive(queue_handler,&recieved_payload, portMAX_DELAY) == pdPASS) {
-            esp_now_send(slave_slave_mac_addr, (uint8_t *)&recieved_payload, sizeof(Payload));
+            esp_now_send(slave_mac_addr, (uint8_t *)&recieved_payload, sizeof(Payload));
         }
     }
 }
@@ -91,7 +92,7 @@ esp_err_t initializeESPNOW()
     xTaskCreatePinnedToCore(
     esp_now_task,
     "ESP_NOW_Task",    
-    2048,        
+    4096,        
     NULL,             
     5,              
     NULL,   
@@ -119,6 +120,8 @@ void button_state_task(void* params)
             continue;
         }
 
+        ESP_LOGI("BUTTON STATES", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d",
+                 payload.upState, payload.downState, payload.leftState, payload.rightState, payload.indexerState);
         xQueueSend(queue_handler, &payload, 0);
         
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -128,7 +131,7 @@ void button_state_task(void* params)
 void on_data_sent(const esp_now_send_info_t* tx_info, esp_now_send_status_t status) 
 {
     const uint8_t* addr = tx_info->des_addr;
-    
+
     if (status == ESP_NOW_SEND_SUCCESS) {
         ESP_LOGI("ESPNOW", "SUCCESSFULLY SENT TO %02X:%02X:%02X:%02X:%02X:%02X ",
                             addr[0], addr[1], addr[2], 
@@ -142,18 +145,26 @@ void on_data_sent(const esp_now_send_info_t* tx_info, esp_now_send_status_t stat
 
 void app_main(void)
 {
+    // remove esp_log_level to see packet success being sent. 
+    esp_log_level_set("ESPNOW", ESP_LOG_WARN);
     initializeNVS();
     initializeWifi();
+    queue_handler = xQueueCreateStatic(
+                                    QUEUE_SIZE,
+                                    PAYLOAD_SIZE,
+                                    queue_buffer,
+                                    &static_queue
+                                );
     initializeESPNOW();
     ESP_ERROR_CHECK(esp_now_register_send_cb(on_data_sent));
 
     gpio_config_t buttonConfigs = {
         // activate all pins in one go
-        .pin_bit_mask = ((1ULL << UP_BUTTON_PIN)
+        .pin_bit_mask = (1ULL << UP_BUTTON_PIN)
                         | (1ULL << DOWN_BUTTON_PIN)
                         | (1ULL << LEFT_BUTTON_PIN)
-                        | (1ULL << RIGHT_BUTTON_PIN
-                        | (1ULL << INDEXER_BUTTON_PIN))),
+                        | (1ULL << RIGHT_BUTTON_PIN)
+                        | (1ULL << INDEXER_BUTTON_PIN),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,  
         .pull_down_en = GPIO_PULLUP_DISABLE,
@@ -162,17 +173,10 @@ void app_main(void)
 
     ESP_ERROR_CHECK(gpio_config(&buttonConfigs));
 
-    queue_handler = xQueueCreateStatic(
-                                       QUEUE_SIZE,
-                                       PAYLOAD_SIZE,
-                                       queue_buffer,
-                                       &static_queue
-                                    );
-
     xTaskCreatePinnedToCore(
         button_state_task,
         "Button State Task",
-        2048, 
+        4096, 
         NULL, 
         4, 
         NULL,
