@@ -1,8 +1,11 @@
+#include <cstdint>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/idf_additions.h"
+#include "freertos/projdefs.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
 #include "nvs_flash.h"
@@ -14,7 +17,15 @@
 #include "esp_mac.h"
 #include "esp_now.h"
 #include "esp_crc.h"
+#include "portmacro.h"
 #include "main.h"
+
+#define QUEUE_SIZE 10
+#define PAYLOAD_SIZE sizeof(Payload)
+Payload payload;
+static StaticQueue_t recv_queue;
+static QueueHandle_t recv_handler;
+static uint8_t recv_data[QUEUE_SIZE * PAYLOAD_SIZE]__attribute__((aligned(4)));
 
 void initializeNVS() 
 {
@@ -39,13 +50,40 @@ void initializeWifi()
 
 void on_data_recv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) 
 {
-    ESP_LOGI("Slave", "Message received from Master!");
+    ESP_LOGI("SLAVE", "Message received from Master!");
+
+    if (xQueueSend(recv_handler, &data, 0) != pdPASS) {
+        ESP_LOGI("RECV DATA", "FAILED TO POST DATA TO CONSUMER");
+    }
 }
 
+void handle_recv_data(void* params)
+{
+    Payload recv_payload;
+    xQueueReceive(recv_handler, &recv_payload, portMAX_DELAY);
+
+    ESP_LOGE("COMMANDS", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d", 
+                                                            recv_payload.upState, 
+                                                            recv_payload.downState, 
+                                                            recv_payload.leftState, 
+                                                            recv_payload.rightState, 
+                                                            recv_payload.indexerState);
+}
 void app_main(void)
 {
     initializeNVS();
     initializeWifi();
     esp_now_init();
+    recv_handler = xQueueCreateStatic(QUEUE_SIZE, 
+                                        PAYLOAD_SIZE,
+                                        recv_data,
+                                        &recv_queue);
     ESP_ERROR_CHECK(esp_now_register_recv_cb(on_data_recv));
+    xTaskCreatePinnedToCore(handle_recv_data, 
+                            "Receiving Data Task" ,
+                            4096, 
+                            NULL, 
+                            4, 
+                            NULL, 
+                            1);
 }
