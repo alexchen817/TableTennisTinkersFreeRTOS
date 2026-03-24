@@ -27,6 +27,17 @@ static StaticQueue_t recv_queue;
 static QueueHandle_t recv_handler;
 static uint8_t recv_data[QUEUE_SIZE * PAYLOAD_SIZE]__attribute__((aligned(4)));
 
+const int AIN1 = 5;
+const int AIN2 = 17;
+const int BIN1 = 16;
+const int BIN2 = 2;
+const int PWMA = 14;
+const int PWMB = 15;
+const int STBY = 18;
+const int PITCH_PIN = 21;
+const int YAW_PIN = 22; 
+const int INDEXER_PIN = 4; 
+
 void initializeNVS() 
 {
     esp_err_t ret = nvs_flash_init();
