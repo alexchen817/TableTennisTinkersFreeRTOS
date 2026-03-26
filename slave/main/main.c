@@ -8,6 +8,7 @@
 #include "freertos/projdefs.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include "hal/ledc_types.h"
 #include "nvs_flash.h"
 #include "esp_random.h"
 #include "esp_event.h"
@@ -18,6 +19,8 @@
 #include "esp_now.h"
 #include "esp_crc.h"
 #include "portmacro.h"
+#include "esp_err.h"
+#include "iot_servo.h"
 #include "main.h"
 
 #define QUEUE_SIZE 10
@@ -85,6 +88,28 @@ void app_main(void)
     initializeNVS();
     initializeWifi();
     esp_now_init();
+
+    // configure all servos at once
+    servo_config_t servo_cfg = {
+        .max_angle = 180,
+        .min_width_us = 500,
+        .max_width_us = 2500,
+        .freq = 50,
+        .timer_number = LEDC_TIMER_0,
+        .channels = {
+            .servo_pin = {
+                PITCH_PIN,
+                YAW_PIN,
+                INDEXER_PIN,
+            },
+            .ch = {
+                LEDC_CHANNEL_0,
+            },
+        },
+        .channel_number = 1,
+    };
+    iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
+
     recv_handler = xQueueCreateStatic(QUEUE_SIZE, 
                                         PAYLOAD_SIZE,
                                         recv_data,
