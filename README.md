@@ -7,6 +7,23 @@ The framework used in this repository is the official ESP-IDF framework by Espre
 - A thought behind the port: ESP-IDF allows for fine-tuned control of ESP32s, which allows the use of `xTaskPinnedToCore()` to separate user code and WiFi coms on separate cores as the ESP32 is a dual-core MCU. 
 
 ## Data Flow Diagram
+```mermaid
+graph LR
+    subgraph Master_Device [Master ESP32]
+        direction LR
+        A[Physical Buttons] -->|GPIO Input| B(button_state_task)
+        B -->|xQueueSend| C[(static_queue)]
+        C -->|xQueueReceive| D(esp_now_task)
+        D -->|esp_now_send| E{ESP-NOW Air}
+    end
+    E -.->|Wireless Packet| F
+    subgraph Slave_Device [Slave ESP32]
+        direction LR
+        F(on_data_recv Callback) -->|xQueueSend| G[(recv_queue)]
+        G -->|xQueueReceive| H(handle_recv_data Task)
+        H -->|iot_servo_set| I[Physical Servos / Motors]
+    end
+```
 
 ## Features
 - 5-state indexer
