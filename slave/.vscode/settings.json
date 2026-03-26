@@ -14,5 +14,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=/Users/alexanderchen/Documents/repos/TableTennisTinkerFreeRTOS/slave/build"
-  ]
+  ],
+  "idf.flashType": "UART"
 }
