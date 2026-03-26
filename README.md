@@ -47,7 +47,8 @@ graph LR
 - `idf.py` CLI 
 
 ## Current Contributors 
-Alex Chen 
+Alex Chen (Firmware)<br></br>
+Connor Chai, Daniel Jenkins (Electrical/Mechanical)
 
 ## Future Task(s)
 - add CI/CD lint, error, and formatting checks and test cases
