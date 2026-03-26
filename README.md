@@ -12,7 +12,7 @@ The framework used in this repository is the official ESP-IDF framework by Espre
 - 5-state indexer
 - Pitch control
 - Yaw control
-- DC motor control ()
+- DC motor control (to allow spin)
 ## Parts Used
 - 2x ESP-WROOM-32 
 - 1x SG90 servo motor (indexer) @ 50Hz
