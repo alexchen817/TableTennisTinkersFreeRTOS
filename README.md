@@ -51,7 +51,7 @@ graph LR
 Alex Chen (Firmware)<br></br>
 Connor Chai, Daniel Jenkins (Electrical/Mechanical)
 
-# Concurrent Issues & Solutions
+## Concurrent Issues & Solutions
 If the project is not building or flashing properly after changing the code, run the following commands in your current directory one by one:
 
 MacOS/Linux: 
