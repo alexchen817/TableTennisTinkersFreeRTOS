@@ -28,7 +28,7 @@
 #include "main.h"
 #include "driver/gpio.h"
 
-static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x5D, 0x9C};
+static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0xEC, 0xC9, 0xFF, 0xCD, 0x62, 0xCC};
 static esp_now_peer_info_t peer;
 
 static const int UP_BUTTON_PIN = 18;
@@ -120,8 +120,8 @@ void button_state_task(void* params)
             continue;
         }
 
-        ESP_LOGI("BUTTON STATES", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d",
-                 payload.upState, payload.downState, payload.leftState, payload.rightState, payload.indexerState);
+        // ESP_LOGI("BUTTON STATES", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d",
+        //          payload.upState, payload.downState, payload.leftState, payload.rightState, payload.indexerState);
         xQueueSend(queue_handler, &payload, 0);
         
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -146,7 +146,7 @@ void on_data_sent(const esp_now_send_info_t* tx_info, esp_now_send_status_t stat
 void app_main(void)
 {
     // remove esp_log_level to see packet success being sent. 
-    esp_log_level_set("ESPNOW", ESP_LOG_WARN);
+    // esp_log_level_set("ESPNOW", ESP_LOG_WARN);
     initializeNVS();
     initializeWifi();
     queue_handler = xQueueCreateStatic(
