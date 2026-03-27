@@ -104,9 +104,11 @@ void app_main(void)
             },
             .ch = {
                 LEDC_CHANNEL_0,
+                LEDC_CHANNEL_1,
+                LEDC_CHANNEL_2
             },
         },
-        .channel_number = 1,
+        .channel_number = 3,
     };
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
 
