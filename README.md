@@ -43,9 +43,10 @@ graph LR
 - Servo control using `Espressif/servo` API 
 - NVS (Non-Volatile Storage)
 - FreeRTOS Tasks and Queues
-- ESP-IDF API 
+- Reading ESP-IDF documentation for API methods
 - ESP-NOW WiFi Communication Protocol (via MAC addresses)
-- `idf.py` CLI 
+- `idf.py` CLI
+- Reading ESP32 Data Sheet
 
 ## Current Contributors 
 Alex Chen (Firmware)<br></br>
