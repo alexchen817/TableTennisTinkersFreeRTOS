@@ -54,6 +54,7 @@ void initializeNVS()
 void initializeWifi()
 {
     ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
     wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&config));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
@@ -62,33 +63,42 @@ void initializeWifi()
     ESP_ERROR_CHECK(esp_wifi_set_channel(CONFIG_ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 }
 
-void on_data_recv(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) 
+void data_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) 
 {
     ESP_LOGI("SLAVE", "Message received from Master!");
 
-    if (xQueueSend(recv_handler, &data, 0) != pdPASS) {
+    if (xQueueSend(recv_handler, data, 0) != pdPASS) {
         ESP_LOGI("RECV DATA", "FAILED TO POST DATA TO CONSUMER");
     }
 }
 
-void handle_recv_data(void* params)
+void handle_recv_data_task(void* params)
 {
+    // this task must never return or end!   
     Payload recv_payload;
-    xQueueReceive(recv_handler, &recv_payload, portMAX_DELAY);
+    while (true) {
+        xQueueReceive(recv_handler, &recv_payload, portMAX_DELAY);
 
-    ESP_LOGE("COMMANDS", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d", 
-                                                            recv_payload.upState, 
-                                                            recv_payload.downState, 
-                                                            recv_payload.leftState, 
-                                                            recv_payload.rightState, 
-                                                            recv_payload.indexerState);
+        ESP_LOGI("COMMANDS", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d", 
+                                                                recv_payload.upState, 
+                                                                recv_payload.downState, 
+                                                                recv_payload.leftState, 
+                                                                recv_payload.rightState, 
+                                                                recv_payload.indexerState);
+    }
+
 }
 void app_main(void)
 {
     initializeNVS();
     initializeWifi();
-    esp_now_init();
-
+    recv_handler = xQueueCreateStatic(QUEUE_SIZE, 
+                                    PAYLOAD_SIZE,
+                                    recv_data,
+                                    &recv_queue);
+    ESP_ERROR_CHECK(esp_now_init());
+    ESP_ERROR_CHECK(esp_now_register_recv_cb(data_recv_cb));
+    // esp_log_level_set("ESPNOW", ESP_LOG_WARN);      
     // configure all servos at once
     servo_config_t servo_cfg = {
         .max_angle = 180,
@@ -112,12 +122,8 @@ void app_main(void)
     };
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
 
-    recv_handler = xQueueCreateStatic(QUEUE_SIZE, 
-                                        PAYLOAD_SIZE,
-                                        recv_data,
-                                        &recv_queue);
-    ESP_ERROR_CHECK(esp_now_register_recv_cb(on_data_recv));
-    xTaskCreatePinnedToCore(handle_recv_data, 
+
+    xTaskCreatePinnedToCore(handle_recv_data_task, 
                             "Receiving Data Task" ,
                             4096, 
                             NULL, 
