@@ -38,6 +38,7 @@ graph LR
 - Various 3D printed parts, jumper wires, buttons and other mechanical/electronic parts
 
 ## Learning Outcomes
+- HAL (Hardware Abstraction Layer)
 - PWM control using MCPWM API 
 - Servo control using `Espressif/servo` API 
 - NVS (Non-Volatile Storage)
