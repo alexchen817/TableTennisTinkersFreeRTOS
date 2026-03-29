@@ -28,7 +28,7 @@
 #include "main.h"
 #include "driver/gpio.h"
 
-static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0xEC, 0xC9, 0xFF, 0xCD, 0x62, 0xCC};
+static uint8_t slave_mac_addr[ESP_NOW_ETH_ALEN] = {0x94, 0xE6, 0x86, 0x3B, 0x71, 0x28};
 static esp_now_peer_info_t peer;
 
 static const int UP_BUTTON_PIN = 18;
