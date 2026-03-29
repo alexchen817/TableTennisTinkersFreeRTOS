@@ -30,7 +30,6 @@ The robot is controlled via button presses. There are 5 buttons in total:
 - 5-state indexer
 - Pitch control
 - Yaw control
-- DC motor control (to allow spin)
 ## Parts Used
 - 2x ESP-WROOM-32 
 - 1x SG90 servo motor (indexer) @ 50Hz
@@ -66,3 +65,4 @@ idf.py build flash monitor
 
 ## Future Task(s)
 - add CI/CD lint, error, and formatting checks and test cases
+- add DC motor spin capability
