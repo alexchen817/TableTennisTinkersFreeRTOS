@@ -26,7 +26,7 @@ graph LR
 ```
 
 ## Features
-The robot is controlled via button presses. There are 5 buttons in total:
+The robot is controlled via button presses. There are 5 buttons in total, 2 for yaw (left, right), 2 for pitch (up, down) and 1 for indexing. 
 - 5-state indexer
 - Pitch control
 - Yaw control
