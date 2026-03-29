@@ -47,6 +47,8 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 - ESP-NOW WiFi Communication Protocol (via MAC addresses)
 - `idf.py` CLI
 - Reading ESP32 Data Sheet
+- Understanding GPIO
+- Pull-Up Resistors
 
 ## Current Contributors 
 Alex Chen (Firmware)<br></br>
