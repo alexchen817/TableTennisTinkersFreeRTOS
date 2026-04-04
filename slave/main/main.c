@@ -29,21 +29,24 @@
 #define PAYLOAD_SIZE sizeof(Payload)
 #define SERVO_WAIT_TIME 100
 #define MAX_DEGREES 180
+#define ANGLE_INCREMENT 36
+#define NUM_CHUTES 4
+#define INDEXER_DEG_START 32
 Payload payload;
 static StaticQueue_t recv_queue;
 static QueueHandle_t recv_handler;
 static uint8_t recv_data[QUEUE_SIZE * PAYLOAD_SIZE]__attribute__((aligned(4)));
 
-const int AIN1 = 5;
-const int AIN2 = 17;
-const int BIN1 = 16;
-const int BIN2 = 2;
-const int PWMA = 14;
-const int PWMB = 15;
-const int STBY = 18;
+// const int AIN1 = 5;
+// const int AIN2 = 17;
+// const int BIN1 = 16;
+// const int BIN2 = 2;
+// const int PWMA = 14;
+// const int PWMB = 15;
+// const int STBY = 18;
 const int PITCH_PIN = 19;
 const int YAW_PIN = 21; 
-const int INDEXER_PIN = 4; 
+const int INDEXER_PIN = 18; 
 
 typedef struct {
     ledc_channel_t channel;
@@ -54,7 +57,7 @@ typedef struct {
 
 Servo PitchServo = {.channel = LEDC_CHANNEL_0, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
 Servo YawServo = {.channel = LEDC_CHANNEL_1, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
-Servo IndexerServo = {.channel = LEDC_CHANNEL_2, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
+Servo IndexerServo = {.channel = LEDC_CHANNEL_2, .current_angle = INDEXER_DEG_START, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
 
 typedef enum {
     SERVO_LEFT,
@@ -87,7 +90,7 @@ void initializeWifi()
 
 void data_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) 
 {
-    ESP_LOGI("SLAVE", "Message received from Master!");
+    // ESP_LOGI("SLAVE", "Message received from Master!");
 
     if (xQueueSend(recv_handler, data, 0) != pdPASS) {
         ESP_LOGI("RECV DATA", "FAILED TO POST DATA TO CONSUMER");
@@ -124,10 +127,36 @@ void move_servo(Servo *servo, ServoDirection direction)
     servo->last_move_time = current_time;
 }
 
+void move_indexer(Servo *indexer, uint8_t *indexer_position)
+{
+    ESP_LOGI("MOVE INDEXER", "MOVE INDEXER METHOD CALLED");
+    (*indexer_position)++;
+    if (*indexer_position > NUM_CHUTES) {
+        // reset 
+        *indexer_position = 0;
+        indexer->current_angle = INDEXER_DEG_START;
+        iot_servo_write_angle(LEDC_HIGH_SPEED_MODE,IndexerServo.channel, indexer->current_angle);
+        return;
+    }
+
+    if (IndexerServo.current_angle <= 0) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        return;
+    } else if (IndexerServo.current_angle >= 180) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        return;
+    }
+
+    IndexerServo.current_angle += ANGLE_INCREMENT;
+    iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, IndexerServo.channel, IndexerServo.current_angle);
+}
+
 void handle_recv_data_task(void* params)
 {
     // this task must never return or end!   
     Payload recv_payload;
+    bool last_indexer_state = false;
+    uint8_t indexer_position = 0;
     while (true) {
         xQueueReceive(recv_handler, &recv_payload, portMAX_DELAY);
 
@@ -146,9 +175,11 @@ void handle_recv_data_task(void* params)
             move_servo(&YawServo, SERVO_LEFT);
         } else if(recv_payload.rightState) {
             move_servo(&YawServo, SERVO_RIGHT);
+        } else if(recv_payload.indexerState && last_indexer_state == false) {
+            move_indexer(&IndexerServo, &indexer_position);
         }
+        last_indexer_state = recv_payload.indexerState;
     }
-
 }
 void app_main(void)
 {
@@ -184,6 +215,10 @@ void app_main(void)
     };
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
     vTaskDelay(pdMS_TO_TICKS(500));
+    iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, PitchServo.channel, PitchServo.current_angle);
+    iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, YawServo.channel, YawServo.current_angle);
+    iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, IndexerServo.channel, IndexerServo.current_angle);
+
     xTaskCreatePinnedToCore(handle_recv_data_task, 
                             "Receiving Data Task" ,
                             4096, 
