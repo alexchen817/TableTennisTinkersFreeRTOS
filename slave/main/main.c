@@ -28,6 +28,7 @@
 #define QUEUE_SIZE 10
 #define PAYLOAD_SIZE sizeof(Payload)
 #define SERVO_WAIT_TIME 100
+#define MAX_DEGREES 180
 Payload payload;
 static StaticQueue_t recv_queue;
 static QueueHandle_t recv_handler;
@@ -54,6 +55,13 @@ typedef struct {
 Servo PitchServo = {.channel = LEDC_CHANNEL_0, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
 Servo YawServo = {.channel = LEDC_CHANNEL_1, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
 Servo IndexerServo = {.channel = LEDC_CHANNEL_2, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
+
+typedef enum {
+    SERVO_LEFT,
+    SERVO_RIGHT,
+    SERVO_UP,
+    SERVO_DOWN
+} ServoDirection;
 
 void initializeNVS() 
 {
@@ -86,11 +94,33 @@ void data_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int
     }
 }
 
-void move_servo(Servo servo)
+void move_servo(Servo *servo, ServoDirection direction)
 {
     // get the current time
-    uint64_t time = esp_timer_get_time();
-    
+    uint64_t current_time = esp_timer_get_time();
+
+    if ((current_time - servo->last_move_time) < servo->wait_time) {
+        return;
+    }
+
+    switch (direction) {
+        case SERVO_UP:
+        case SERVO_RIGHT:
+        if (servo->current_angle > MAX_DEGREES) {
+            return;
+        }
+        servo->current_angle += 3;
+        break;
+        case SERVO_DOWN:
+        case SERVO_LEFT:
+        if (servo->current_angle < 0) {
+            return;
+        }
+        servo->current_angle -= 3;
+        break;
+    }
+    iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, servo->channel, servo->current_angle);
+    servo->last_move_time = current_time;
 }
 
 void handle_recv_data_task(void* params)
@@ -107,8 +137,15 @@ void handle_recv_data_task(void* params)
                                                                 recv_payload.rightState, 
                                                                 recv_payload.indexerState);
 
-        // do something with the recv'd data
-        
+        if (recv_payload.upState) {
+            move_servo(&PitchServo, SERVO_UP);
+        } else if (recv_payload.downState) {
+            move_servo(&PitchServo,SERVO_DOWN);
+        } else if (recv_payload.leftState) {
+            move_servo(&YawServo, SERVO_LEFT);
+        } else if(recv_payload.rightState) {
+            move_servo(&YawServo, SERVO_RIGHT);
+        }
     }
 
 }
