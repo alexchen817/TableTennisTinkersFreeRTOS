@@ -41,8 +41,8 @@ const int BIN2 = 2;
 const int PWMA = 14;
 const int PWMB = 15;
 const int STBY = 18;
-const int PITCH_PIN = 21;
-const int YAW_PIN = 22; 
+const int PITCH_PIN = 19;
+const int YAW_PIN = 21; 
 const int INDEXER_PIN = 4; 
 
 typedef struct {
@@ -91,6 +91,7 @@ void data_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int
 
     if (xQueueSend(recv_handler, data, 0) != pdPASS) {
         ESP_LOGI("RECV DATA", "FAILED TO POST DATA TO CONSUMER");
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -106,14 +107,14 @@ void move_servo(Servo *servo, ServoDirection direction)
     switch (direction) {
         case SERVO_UP:
         case SERVO_RIGHT:
-        if (servo->current_angle > MAX_DEGREES) {
+        if (servo->current_angle >= MAX_DEGREES) {
             return;
         }
         servo->current_angle += 3;
         break;
         case SERVO_DOWN:
         case SERVO_LEFT:
-        if (servo->current_angle < 0) {
+        if (servo->current_angle <= 0) {
             return;
         }
         servo->current_angle -= 3;
@@ -130,12 +131,12 @@ void handle_recv_data_task(void* params)
     while (true) {
         xQueueReceive(recv_handler, &recv_payload, portMAX_DELAY);
 
-        ESP_LOGI("COMMANDS", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d", 
-                                                                recv_payload.upState, 
-                                                                recv_payload.downState, 
-                                                                recv_payload.leftState, 
-                                                                recv_payload.rightState, 
-                                                                recv_payload.indexerState);
+        // ESP_LOGI("COMMANDS", "UP: %d, DOWN: %d, LEFT: %d, RIGHT: %d, INDEXER: %d", 
+        //                                                         recv_payload.upState, 
+        //                                                         recv_payload.downState, 
+        //                                                         recv_payload.leftState, 
+        //                                                         recv_payload.rightState, 
+        //                                                         recv_payload.indexerState);
 
         if (recv_payload.upState) {
             move_servo(&PitchServo, SERVO_UP);
@@ -182,7 +183,7 @@ void app_main(void)
         .channel_number = 3,
     };
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
-
+    vTaskDelay(pdMS_TO_TICKS(500));
     xTaskCreatePinnedToCore(handle_recv_data_task, 
                             "Receiving Data Task" ,
                             4096, 
