@@ -21,10 +21,13 @@
 #include "portmacro.h"
 #include "esp_err.h"
 #include "iot_servo.h"
+#include "pthread.h"
+#include "esp_timer.h"
 #include "main.h"
 
 #define QUEUE_SIZE 10
 #define PAYLOAD_SIZE sizeof(Payload)
+#define SERVO_WAIT_TIME 100
 Payload payload;
 static StaticQueue_t recv_queue;
 static QueueHandle_t recv_handler;
@@ -40,6 +43,17 @@ const int STBY = 18;
 const int PITCH_PIN = 21;
 const int YAW_PIN = 22; 
 const int INDEXER_PIN = 4; 
+
+typedef struct {
+    ledc_channel_t channel;
+    uint8_t current_angle;
+    uint64_t last_move_time; 
+    uint64_t wait_time; 
+} Servo;
+
+Servo PitchServo = {.channel = LEDC_CHANNEL_0, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
+Servo YawServo = {.channel = LEDC_CHANNEL_1, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
+Servo IndexerServo = {.channel = LEDC_CHANNEL_2, .current_angle = 0, .last_move_time = 0, .wait_time = SERVO_WAIT_TIME};
 
 void initializeNVS() 
 {
@@ -72,6 +86,13 @@ void data_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int
     }
 }
 
+void move_servo(Servo servo)
+{
+    // get the current time
+    uint64_t time = esp_timer_get_time();
+    
+}
+
 void handle_recv_data_task(void* params)
 {
     // this task must never return or end!   
@@ -85,6 +106,9 @@ void handle_recv_data_task(void* params)
                                                                 recv_payload.leftState, 
                                                                 recv_payload.rightState, 
                                                                 recv_payload.indexerState);
+
+        // do something with the recv'd data
+        
     }
 
 }
@@ -121,7 +145,6 @@ void app_main(void)
         .channel_number = 3,
     };
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
-
 
     xTaskCreatePinnedToCore(handle_recv_data_task, 
                             "Receiving Data Task" ,
