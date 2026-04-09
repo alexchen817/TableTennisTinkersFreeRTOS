@@ -39,7 +39,7 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 
 ## Learning Outcomes
 - HAL (Hardware Abstraction Layer)
-- PWM control using MCPWM API 
+- PWM control using lEDC API 
 - Servo control using `Espressif/servo` API 
 - NVS (Non-Volatile Storage)
 - FreeRTOS Tasks and Queues
