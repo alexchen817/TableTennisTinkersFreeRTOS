@@ -3,11 +3,14 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
+#include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include "hal/gpio_types.h"
 #include "hal/ledc_types.h"
 #include "nvs_flash.h"
 #include "esp_random.h"
@@ -37,13 +40,13 @@ static StaticQueue_t recv_queue;
 static QueueHandle_t recv_handler;
 static uint8_t recv_data[QUEUE_SIZE * PAYLOAD_SIZE]__attribute__((aligned(4)));
 
-// const int AIN1 = 5;
-// const int AIN2 = 17;
-// const int BIN1 = 16;
-// const int BIN2 = 2;
-// const int PWMA = 14;
-// const int PWMB = 15;
-// const int STBY = 18;
+const int DC_AIN1 = 4;
+const int DC_AIN2 = 14;
+const int DC_MOTOR_A_PWMA_PIN = 13;
+const int DC_BIN1 = 5;
+const int DC_BIN2 = 18;
+const int DC_MOTOR_B_PWMA_PIN = 19;
+const int STBY_PIN = 27;
 const int PITCH_PIN = 19;
 const int YAW_PIN = 21; 
 const int INDEXER_PIN = 18; 
@@ -213,14 +216,63 @@ void app_main(void)
         },
         .channel_number = 3,
     };
+    // set initial angles 
     iot_servo_init(LEDC_HIGH_SPEED_MODE, &servo_cfg);
     vTaskDelay(pdMS_TO_TICKS(500));
     iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, PitchServo.channel, PitchServo.current_angle);
     iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, YawServo.channel, YawServo.current_angle);
     iot_servo_write_angle(LEDC_HIGH_SPEED_MODE, IndexerServo.channel, IndexerServo.current_angle);
 
+
+    // setup dc motors 
+    ESP_LOGI("MOTOR", "Starting motor init");
+    ledc_timer_config_t dc_motor_config = {
+        .speed_mode = LEDC_HIGH_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_10_BIT,
+        .timer_num = LEDC_TIMER_1,
+        .freq_hz = 5000,
+    };
+    ESP_ERROR_CHECK(ledc_timer_config(&dc_motor_config));
+
+    ledc_channel_config_t dc_motor_a = {
+        .gpio_num = DC_MOTOR_A_PWMA_PIN,
+        .speed_mode = LEDC_HIGH_SPEED_MODE,
+        .channel = LEDC_CHANNEL_3,
+        .timer_sel = LEDC_TIMER_1,
+        .duty = 0, // init the motor at 0 avg speed 
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&dc_motor_a));
+
+    ledc_channel_config_t dc_motor_b = {
+        .gpio_num = DC_MOTOR_B_PWMA_PIN,
+        .speed_mode = LEDC_HIGH_SPEED_MODE,
+        .channel = LEDC_CHANNEL_4,
+        .timer_sel = LEDC_TIMER_1,
+        .duty = 0, // init the motor at 0 avg speed 
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&dc_motor_b));
+
+    // setpins to output since default is input on GPIO pins 
+    gpio_set_direction(DC_AIN1, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DC_AIN2, GPIO_MODE_OUTPUT);
+    gpio_set_direction(STBY_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DC_BIN1, GPIO_MODE_OUTPUT);
+    gpio_set_direction(DC_BIN2, GPIO_MODE_OUTPUT);
+
+    // set clockwise/counterclockwise spin direction for dc motor 
+    gpio_set_level(DC_AIN2, 0);
+    gpio_set_level(DC_AIN1, 1);
+    gpio_set_level(DC_BIN2, 0);
+    gpio_set_level(DC_BIN1, 1);
+    gpio_set_level(STBY_PIN, 1);
+    // set and update duty cycle of motors 
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, dc_motor_a.channel, 512);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, dc_motor_a.channel);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, dc_motor_b.channel, 512);
+    ledc_update_duty(LEDC_HIGH_SPEED_MODE, dc_motor_b.channel);
+
     xTaskCreatePinnedToCore(handle_recv_data_task, 
-                            "Receiving Data Task" ,
+        "Receiving Data Task" ,
                             4096, 
                             NULL, 
                             4, 
