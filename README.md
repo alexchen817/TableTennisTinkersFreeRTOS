@@ -50,11 +50,11 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 - Understanding GPIO
 - Pull-Up Resistors
 
-## Current Contributors 
+## Contributors 
 Alex Chen (Firmware)<br></br>
 Connor Chai, Daniel Jenkins (Electrical/Mechanical)
 
-## Concurrent Issues & Solutions
+## Issues & Solutions
 If the project is not building or flashing properly after changing the code, run the following commands in your current directory one by one:
 
 MacOS/Linux: 
@@ -67,3 +67,4 @@ idf.py build flash monitor
 
 ## Future Task(s)
 - add CI/CD lint, error, and formatting checks and test cases
+- swap buttons for ADC control via joysticks
