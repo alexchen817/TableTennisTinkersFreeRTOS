@@ -51,7 +51,7 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 - Pull-Up Resistors
 
 ## Contributors 
-Alex Chen (Firmware)<br></br>
+Alex Chen (Firmware/Eletrical)<br></br>
 Connor Chai, Daniel Jenkins (Electrical/Mechanical)
 
 ## Issues & Solutions
