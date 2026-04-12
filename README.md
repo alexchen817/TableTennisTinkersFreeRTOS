@@ -67,4 +67,3 @@ idf.py build flash monitor
 
 ## Future Task(s)
 - add CI/CD lint, error, and formatting checks and test cases
-- add DC motor spin capability
