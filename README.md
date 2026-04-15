@@ -6,6 +6,9 @@ This repository contains code for two ESP32s, one 'master' and 'slave'. It is an
 The framework used in this repository is the official ESP-IDF framework by Espressif Systems. Porting to this framework allowed more freedom with the addition of **FreeRTOS Tasks and Queues** in mind. The former repository relied on the Arduino framework which helped quickly prototype our robot for the 2026 FAS Competition, however, there were issues with timing and WiFi communication, which created challenging debugging sessions. 
 - A thought behind the port: ESP-IDF allows for fine-tuned control of ESP32s, which allows the use of `xTaskPinnedToCore()` to separate user code and WiFi coms on separate cores as the ESP32 is a dual-core MCU. 
 
+## Schematic 
+![Schematic](/images/tabletennisschematic.svg)
+Developed by Alexander Chen
 ## Data Flow Diagram
 ```mermaid
 graph LR
@@ -51,7 +54,7 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 - Pull-Up Resistors
 
 ## Contributors 
-Alex Chen (Firmware/Eletrical)<br></br>
+Alexander Chen (Firmware/Eletrical)<br></br>
 Connor Chai, Daniel Jenkins (Electrical/Mechanical)
 
 ## Issues & Solutions
