@@ -38,7 +38,7 @@ The robot is controlled via button presses. There are 5 buttons in total, 2 for 
 - 1x SG90 servo motor (indexer) @ 50Hz
 - 2x MG995 servo motor (pitch & yaw control) @ 50Hz
 - 1x Motor Driver (SparkFun TB6612FNG)
-  1x Buck Converter (LM2596)
+- 1x Buck Converter (LM2596)
 - Various 3D printed parts, jumper wires, buttons and other mechanical/electronic parts
 
 ## Learning Outcomes
