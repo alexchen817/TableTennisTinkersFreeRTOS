@@ -8,7 +8,7 @@ The framework used in this repository is the official ESP-IDF framework by Espre
 
 ## Schematic 
 ![Schematic](/images/tabletennisschematic.svg)
-Developed by Alexander Chen
+Schematic developed by Alexander Chen in KiCad 10.0.0
 ## Data Flow Diagram
 ```mermaid
 graph LR
@@ -27,7 +27,7 @@ graph LR
         H -->|iot_servo_set| I[Physical Servos / Motors]
     end
 ```
-
+DFD Developed by Alexander Chen 
 ## Features
 The robot is controlled via button presses. There are 5 buttons in total, 2 for yaw (left, right), 2 for pitch (up, down) and 1 for indexing. 
 - 5-state indexer
